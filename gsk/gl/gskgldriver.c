@@ -1538,7 +1538,7 @@ gsk_gl_driver_add_texture_slices (GskGLDriver        *self,
       data4 = g_malloc (4 * w * extra_pixels);
 
       format = gdk_texture_get_format (GDK_TEXTURE (memtex));
-      bpp = gdk_memory_format_bytes_per_pixel (format);
+      bpp = gdk_memory_format_get_plane_block_bytes (format, 0);
 
       for (int i = 0; i < w; i++)
         {

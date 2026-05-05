@@ -34,6 +34,7 @@
 #include <gdk/gdkglcontextprivate.h>
 #include <gdk/gdksurfaceprivate.h>
 #include <gdk/gdksubsurfaceprivate.h>
+#include <gdk/gdkswizzleprivate.h>
 #include <glib/gi18n-lib.h>
 #include <gsk/gskdebugprivate.h>
 #include <gsk/gskrendererprivate.h>

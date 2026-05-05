@@ -41,10 +41,16 @@
 #include <math.h>
 #include <string.h>
 
+#include "gskbordernodeprivate.h"
+#include "gskcolornodeprivate.h"
+#include "gskinsetshadownodeprivate.h"
+#include "gskoutsetshadownodeprivate.h"
+#include "gsktextnodeprivate.h"
 #include "gskglcommandqueueprivate.h"
 #include "gskgldriverprivate.h"
 #include "gskglglyphlibraryprivate.h"
 #include "gskgliconlibraryprivate.h"
+#include "gskbordernodeprivate.h"
 #include "gskglprogramprivate.h"
 #include "gskglrenderjobprivate.h"
 #include "gskglshadowlibraryprivate.h"
@@ -324,6 +330,13 @@ node_supports_2d_transform (const GskRenderNode *node)
     case GSK_CLIP_NODE:
     case GSK_ROUNDED_CLIP_NODE:
     case GSK_GL_SHADER_NODE:
+    case GSK_COMPONENT_TRANSFER_NODE:
+    case GSK_COPY_NODE:
+    case GSK_PASTE_NODE:
+    case GSK_COMPOSITE_NODE:
+    case GSK_ISOLATION_NODE:
+    case GSK_DISPLACEMENT_NODE:
+    case GSK_ARITHMETIC_NODE:
       return FALSE;
 
     case GSK_NOT_A_RENDER_NODE:
@@ -380,9 +393,17 @@ node_supports_transform (const GskRenderNode *node)
     case GSK_ROUNDED_CLIP_NODE:
     case GSK_GL_SHADER_NODE:
     case GSK_TEXTURE_SCALE_NODE:
+    case GSK_COMPONENT_TRANSFER_NODE:
+    case GSK_COPY_NODE:
+    case GSK_PASTE_NODE:
+    case GSK_COMPOSITE_NODE:
+    case GSK_ISOLATION_NODE:
+    case GSK_DISPLACEMENT_NODE:
+    case GSK_ARITHMETIC_NODE:
       return FALSE;
 
     case GSK_NOT_A_RENDER_NODE:
+
     default:
       g_assert_not_reached ();
     }
@@ -1452,7 +1473,7 @@ static void
 get_color_node_color_as_srgb (const GskRenderNode *node,
                               GdkRGBA             *rgba)
 {
-  const GdkColor *color = gsk_color_node_get_color2 (node);
+  const GdkColor *color = gsk_color_node_get_gdk_color (node);
   gdk_color_to_float (color, GDK_COLOR_STATE_SRGB, (float *) rgba);
 }
 
@@ -2057,7 +2078,7 @@ gsk_gl_render_job_visit_transform_node (GskGLRenderJob      *job,
       {
         float dx, dy;
 
-        gsk_transform_node_get_translate (node, &dx, &dy);
+        gsk_transform_to_translate (gsk_transform_node_get_transform (node), &dx, &dy);
         gsk_gl_render_job_offset (job, dx, dy);
         gsk_gl_render_job_visit_node (job, child);
         gsk_gl_render_job_offset (job, -dx, -dy);
@@ -2184,7 +2205,7 @@ gsk_gl_render_job_visit_unblurred_inset_shadow_node (GskGLRenderJob      *job,
     {
       const GdkRGBA rgba;
 
-      gdk_color_to_float (gsk_inset_shadow_node_get_color2 (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
+      gdk_color_to_float (gsk_inset_shadow_node_get_gdk_color (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
 
       gsk_gl_program_set_uniform_rounded_rect (job->current_program,
                                                UNIFORM_INSET_SHADOW_OUTLINE_RECT, 0,
@@ -2291,7 +2312,7 @@ gsk_gl_render_job_visit_blurred_inset_shadow_node (GskGLRenderJob      *job,
         {
           const GdkRGBA rgba;
 
-          gdk_color_to_float (gsk_inset_shadow_node_get_color2 (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
+          gdk_color_to_float (gsk_inset_shadow_node_get_gdk_color (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
 
           gsk_gl_program_set_uniform_rounded_rect (job->current_program,
                                                    UNIFORM_INSET_SHADOW_OUTLINE_RECT, 0,
@@ -2398,7 +2419,7 @@ gsk_gl_render_job_visit_unblurred_outset_shadow_node (GskGLRenderJob      *job,
     { outline->corner[3].width + spread - dx, outline->corner[3].height + spread + dy },
   };
 
-  gdk_color_to_float (gsk_outset_shadow_node_get_color2 (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
+  gdk_color_to_float (gsk_outset_shadow_node_get_gdk_color (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
   rgba_to_half (&rgba, color);
 
   gsk_gl_render_job_translate_rounded_rect (job, outline, &transformed_outline);
@@ -2488,7 +2509,7 @@ gsk_gl_render_job_visit_blurred_outset_shadow_node (GskGLRenderJob      *job,
   float half_width = outline->bounds.size.width / 2;
   float half_height = outline->bounds.size.height / 2;
 
-  gdk_color_to_float (gsk_outset_shadow_node_get_color2 (node), GDK_COLOR_STATE_SRGB, (float *)  &rgba);
+  gdk_color_to_float (gsk_outset_shadow_node_get_gdk_color (node), GDK_COLOR_STATE_SRGB, (float *)  &rgba);
   rgba_to_half (&rgba, color);
 
   /* scaled_outline is the minimal outline we need to draw the given drop shadow,
@@ -2918,7 +2939,7 @@ gsk_gl_render_job_visit_opacity_node (GskGLRenderJob      *job,
     {
       float prev_alpha = gsk_gl_render_job_set_alpha (job, new_alpha);
 
-      if (!gsk_render_node_use_offscreen_for_opacity (child))
+      if (!gsk_render_node_needs_blending (child))
         {
           gsk_gl_render_job_visit_node (job, child);
           gsk_gl_render_job_set_alpha (job, prev_alpha);
@@ -3554,9 +3575,10 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 
       g_assert (n_children < G_N_ELEMENTS (offscreens));
 
+      guint n_children = gsk_container_node_get_n_children (node);
       for (guint i = 0; i < n_children; i++)
         {
-          const GskRenderNode *child = gsk_gl_shader_node_get_child (node, i);
+          const GskRenderNode *child = gsk_container_node_get_child (node, i);
 
           offscreens[i].bounds = &node->bounds;
           offscreens[i].force_offscreen = TRUE;
@@ -4024,7 +4046,7 @@ gsk_gl_render_job_visit_subsurface_node (GskGLRenderJob      *job,
   subsurface = (GdkSubsurface *) gsk_subsurface_node_get_subsurface (node);
 
   if (subsurface &&
-      gdk_subsurface_get_texture (subsurface) && 
+      gdk_subsurface_get_texture (subsurface) &&
       gdk_subsurface_get_parent (subsurface) == gdk_gl_context_get_surface (job->command_queue->context))
     {
       if (!gdk_subsurface_is_above_parent (subsurface))
@@ -4117,7 +4139,7 @@ gsk_gl_render_job_visit_node (GskGLRenderJob      *job,
         GskRenderNode **children;
         guint n_children;
 
-        children = gsk_container_node_get_children (node, &n_children);
+        n_children = gsk_container_node_get_n_children (node);
 
         for (guint i = 0; i < n_children; i++)
           {
@@ -4224,7 +4246,7 @@ gsk_gl_render_job_visit_node (GskGLRenderJob      *job,
       {
         GdkRGBA rgba;
 
-        gdk_color_to_float (gsk_text_node_get_color2 (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
+        gdk_color_to_float (gsk_text_node_get_gdk_color (node), GDK_COLOR_STATE_SRGB, (float *) &rgba);
         gsk_gl_render_job_visit_text_node (job, node, &rgba, FALSE);
       }
     break;
