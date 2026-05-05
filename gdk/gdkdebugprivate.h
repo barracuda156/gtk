@@ -51,6 +51,7 @@ typedef enum {
   GDK_DEBUG_NO_VSYNC           = 1 << 23,
   GDK_DEBUG_COLOR_MANAGEMENT   = 1 << 24,
   GDK_DEBUG_DCOMP              = 1 << 25,
+  GDK_DEBUG_GL_NO_FRACTIONAL   = 1 << 26,
 } GdkDebugFlags;
 
 typedef enum {

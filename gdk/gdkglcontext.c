@@ -593,6 +593,23 @@ gdk_gl_context_real_make_current (GdkGLContext *context,
 #endif
 }
 
+double
+gdk_gl_context_get_scale (GdkGLContext *self)
+{
+  GdkDisplay *display;
+  GdkSurface *surface;
+  double scale;
+
+  surface = gdk_draw_context_get_surface (GDK_DRAW_CONTEXT (self));
+  scale = gdk_surface_get_scale (surface);
+
+  display = gdk_gl_context_get_display (self);
+  if (gdk_display_get_debug_flags (display) & GDK_DEBUG_GL_NO_FRACTIONAL)
+    scale = ceil (scale);
+
+  return scale;
+}
+
 #ifdef HAVE_EGL
 void
 gdk_gl_context_set_egl_native_window (GdkGLContext *self,
@@ -713,17 +730,19 @@ gdk_gl_context_real_begin_frame (GdkDrawContext  *draw_context,
   GdkSurface *surface = gdk_draw_context_get_surface (draw_context);
   GdkColorState *color_state;
   cairo_region_t *damage;
+  double scale;
   guint ww, wh;
   int i;
 
   color_state = gdk_surface_get_color_state (surface);
+  scale = gdk_gl_context_get_scale (context);
 
   depth = gdk_memory_depth_merge (depth, gdk_color_state_get_depth (color_state));
 
 #ifdef HAVE_EGL
   if (priv->egl_context)
     gdk_gl_context_ensure_egl_surface (context, depth);
-  
+
   *out_depth = priv->egl_surface_depth;
   *out_color_state = color_state;
 #else
@@ -2120,7 +2139,7 @@ gdk_gl_context_clear_current (void)
  *
  * Does a gdk_gl_context_clear_current() if the current context is attached
  * to @surface, leaves the current context alone otherwise.
- * 
+ *
  * Returns: (nullable) (transfer full): The context that was cleared, so that it can be
  *   re-made current later
  **/

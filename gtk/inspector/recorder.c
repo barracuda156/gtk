@@ -958,7 +958,7 @@ add_texture_rows (GListStore *store,
           add_text_row (store, "Strides", "%zu, %zu, %zu",
                         layout->planes[0].stride, layout->planes[1].stride, layout->planes[2].stride);
           break;
-        
+
         case 4:
           add_text_row (store, "Offsets", "%zu, %zu, %zu, %zu",
                         layout->planes[0].offset, layout->planes[1].offset,
@@ -2100,7 +2100,7 @@ get_selected_node (GtkInspectorRecorder *recorder)
 
 static void
 render_node_list_selection_changed (GtkSingleSelection   *selection,
-                                    GParamSpec           *pspec, 
+                                    GParamSpec           *pspec,
                                     GtkInspectorRecorder *recorder)
 {
   GskRenderNode *draw_node;
@@ -2757,6 +2757,7 @@ gtk_inspector_recorder_record_render (GtkInspectorRecorder *recorder,
     }
 
   recording = gtk_inspector_render_recording_new (frame_time,
+                                                  gsk_renderer_get_profiler (renderer),
                                                   &(GdkRectangle) { 0, 0,
                                                     gdk_surface_get_width (surface),
                                                     gdk_surface_get_height (surface) },
