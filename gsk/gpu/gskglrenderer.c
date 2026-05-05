@@ -1,6 +1,6 @@
 #include "config.h"
 
-#include "gskglrenderer.h"
+#include "gsknglrendererprivate.h"
 
 #include "gskgpuimageprivate.h"
 #include "gskgpurendererprivate.h"

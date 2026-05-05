@@ -3572,10 +3572,11 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
       const guint8 *base;
       GBytes *args;
       int n_uniforms;
+      guint n_children;
 
       g_assert (n_children < G_N_ELEMENTS (offscreens));
 
-      guint n_children = gsk_container_node_get_n_children (node);
+      n_children = gsk_container_node_get_n_children (node);
       for (guint i = 0; i < n_children; i++)
         {
           const GskRenderNode *child = gsk_container_node_get_child (node, i);
