@@ -41,6 +41,7 @@
 
 #include "gskenumtypes.h"
 
+#include "gl/gskglrenderer.h"
 #include "gpu/gskglrenderer.h"
 #include "gpu/gskvulkanrenderer.h"
 #include "gdk/gdkvulkancontextprivate.h"
@@ -64,6 +65,8 @@ typedef struct
 
   GdkSurface *surface;
   GskRenderNode *prev_node;
+
+  GskProfiler *profiler;
 
   GskDebugFlags debug_flags;
 
@@ -123,11 +126,13 @@ static void
 gsk_renderer_dispose (GObject *gobject)
 {
   GskRenderer *self = GSK_RENDERER (gobject);
-  G_GNUC_UNUSED GskRendererPrivate *priv = gsk_renderer_get_instance_private (self);
+  GskRendererPrivate *priv = gsk_renderer_get_instance_private (self);
 
   /* We can't just unrealize here because superclasses have already run dispose.
    * So we insist that unrealize must be called before unreffing. */
   g_assert (!priv->is_realized);
+
+  g_clear_object (&priv->profiler);
 
   G_OBJECT_CLASS (gsk_renderer_parent_class)->dispose (gobject);
 }
@@ -198,6 +203,7 @@ gsk_renderer_init (GskRenderer *self)
 {
   GskRendererPrivate *priv = gsk_renderer_get_instance_private (self);
 
+  priv->profiler = gsk_profiler_new ();
   priv->debug_flags = gsk_get_debug_flags ();
 }
 
@@ -484,6 +490,24 @@ gsk_renderer_render (GskRenderer          *renderer,
   priv->prev_node = gsk_render_node_ref (root);
 }
 
+/*< private >
+ * gsk_renderer_get_profiler:
+ * @renderer: a renderer
+ *
+ * Retrieves a pointer to the `GskProfiler` instance of the renderer.
+ *
+ * Returns: (transfer none): the profiler
+ */
+GskProfiler *
+gsk_renderer_get_profiler (GskRenderer *renderer)
+{
+  GskRendererPrivate *priv = gsk_renderer_get_instance_private (renderer);
+
+  g_return_val_if_fail (GSK_IS_RENDERER (renderer), NULL);
+
+  return priv->profiler;
+}
+
 static GType
 get_renderer_for_name (const char *renderer_name)
 {
@@ -495,6 +519,8 @@ get_renderer_for_name (const char *renderer_name)
 #endif
   else if (g_ascii_strcasecmp (renderer_name, "cairo") == 0)
     return GSK_TYPE_CAIRO_RENDERER;
+  else if (g_ascii_strcasecmp (renderer_name, "legacy") == 0)
+    return GSK_TYPE_GL_LEGACY_RENDERER;
   else if (g_ascii_strcasecmp (renderer_name, "gl") == 0 ||
            g_ascii_strcasecmp (renderer_name, "opengl") == 0)
     return GSK_TYPE_GL_RENDERER;
@@ -516,6 +542,7 @@ get_renderer_for_name (const char *renderer_name)
                         "  broadway - Disabled during GTK build\n"
 #endif
                         "     cairo - Use the Cairo fallback renderer\n"
+                        "    legacy - Use the legacy GL renderer (supports OpenGL 2.0+)\n"
                         "    opengl - Use the OpenGL renderer\n"
                         "        gl - Use the OpenGL renderer\n"
 #ifdef GDK_RENDERING_VULKAN
@@ -524,8 +551,8 @@ get_renderer_for_name (const char *renderer_name)
                         "    vulkan - Disabled during GTK build\n"
 #endif
                         "      help - Print this help\n\n"
-                        "The old OpenGL renderer has been removed in GTK 4.18, so using\n"
-                        "GSK_RENDERER=gl will cause a warning and use the new OpenGL renderer.\n\n"
+                        "The GPU renderer (gl/opengl) requires OpenGL 3.3+ or GLES 3.0+.\n"
+                        "For older OpenGL versions (2.0-3.2), use GSK_RENDERER=legacy.\n\n"
                         "Other arguments will cause a warning and be ignored.");
     }
   else

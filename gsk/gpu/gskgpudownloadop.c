@@ -357,7 +357,10 @@ gsk_gpu_download_op_gl_command (GskGpuOp          *op,
    * the texture might survive the frame and its surface */
   data->context = g_object_ref (gdk_display_get_gl_context (gsk_gpu_device_get_display (gsk_gpu_frame_get_device (frame))));
   data->texture_id = texture_id;
-  data->sync = glFenceSync (GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+  if (gdk_gl_context_has_feature (data->context, GDK_GL_FEATURE_SYNC))
+    data->sync = glFenceSync (GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+  else
+    data->sync = NULL;
 
   builder = gdk_gl_texture_builder_new ();
   gdk_gl_texture_builder_set_context (builder, data->context);

@@ -19,6 +19,7 @@
 
 #include <gdk/gdk.h>
 #include <gsk/gsk.h>
+#include "gsk/gskprofilerprivate.h"
 
 #include "inspector/recording.h"
 
@@ -43,6 +44,7 @@ typedef struct _GtkInspectorRenderRecording
   GskRenderNode *node;
   GskRenderNode *profile_node;
   gpointer surface;
+  char *profiler_info;
 } GtkInspectorRenderRecording;
 
 typedef struct _GtkInspectorRenderRecordingClass
@@ -54,6 +56,7 @@ GType           gtk_inspector_render_recording_get_type         (void);
 
 GtkInspectorRecording *
                 gtk_inspector_render_recording_new              (gint64                             timestamp,
+                                                                 GskProfiler                       *profiler,
                                                                  const GdkRectangle                *area,
                                                                  const cairo_region_t              *clip_region,
                                                                  GskRenderNode                     *node,
@@ -70,6 +73,9 @@ const cairo_rectangle_int_t *
 
 gpointer
                 gtk_inspector_render_recording_get_surface      (GtkInspectorRenderRecording       *recording);
+
+const char *    gtk_inspector_render_recording_get_profiler_info
+                                                                (GtkInspectorRenderRecording       *recording);
 
 G_END_DECLS
 

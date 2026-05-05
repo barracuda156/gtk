@@ -1,5 +1,5 @@
 /*
- * Copyright © 2016  Endless 
+ * Copyright © 2016  Endless
  *             2018  Benjamin Otte
  *
  * This library is free software; you can redistribute it and/or
@@ -85,6 +85,27 @@ gsk_cairo_renderer_unrealize (GskRenderer *renderer)
     }
 }
 
+static void
+gsk_cairo_renderer_do_render (GskRenderer   *renderer,
+                              cairo_t       *cr,
+                              GdkColorState *ccs,
+                              GskRenderNode *root)
+{
+  GskCairoRenderer *self = GSK_CAIRO_RENDERER (renderer);
+  GskProfiler *profiler;
+  gint64 cpu_time;
+
+  profiler = gsk_renderer_get_profiler (renderer);
+  gsk_profiler_timer_begin (profiler, self->profile_timers.cpu_time);
+
+  gsk_render_node_draw_with_color_state (root, cr, ccs);
+
+  cpu_time = gsk_profiler_timer_end (profiler, self->profile_timers.cpu_time);
+  gsk_profiler_timer_set (profiler, self->profile_timers.cpu_time, cpu_time);
+
+  gsk_profiler_push_samples (profiler);
+}
+
 static GdkTexture *
 gsk_cairo_renderer_render_texture (GskRenderer           *renderer,
                                    GskRenderNode         *root,
@@ -113,7 +134,7 @@ gsk_cairo_renderer_render_texture (GskRenderer           *renderer,
         {
           for (x = 0; x < width; x += MAX_IMAGE_SIZE)
             {
-              texture = gsk_cairo_renderer_render_texture (renderer, root, 
+              texture = gsk_cairo_renderer_render_texture (renderer, root,
                                                            &GRAPHENE_RECT_INIT (x, y,
                                                                                 MIN (MAX_IMAGE_SIZE, viewport->size.width - x),
                                                                                 MIN (MAX_IMAGE_SIZE, viewport->size.height - y)));
@@ -135,7 +156,7 @@ gsk_cairo_renderer_render_texture (GskRenderer           *renderer,
 
   cairo_translate (cr, - viewport->origin.x, - viewport->origin.y);
 
-  gsk_render_node_draw_with_color_state (root, cr, GDK_COLOR_STATE_SRGB);
+  gsk_cairo_renderer_do_render (renderer, cr, GDK_COLOR_STATE_SRGB, root);
 
   cairo_destroy (cr);
 
@@ -184,7 +205,10 @@ G_GNUC_END_IGNORE_DEPRECATIONS
       cairo_restore (cr);
     }
 
-  gsk_render_node_draw_with_color_state (root, cr, gdk_draw_context_get_color_state (GDK_DRAW_CONTEXT (self->cairo_context)));
+  gsk_cairo_renderer_do_render (renderer,
+                                cr,
+                                gdk_draw_context_get_color_state (GDK_DRAW_CONTEXT (self->cairo_context)),
+                                root);
 
   cairo_destroy (cr);
 
@@ -205,6 +229,9 @@ gsk_cairo_renderer_class_init (GskCairoRendererClass *klass)
 static void
 gsk_cairo_renderer_init (GskCairoRenderer *self)
 {
+  GskProfiler *profiler = gsk_renderer_get_profiler (GSK_RENDERER (self));
+
+  self->profile_timers.cpu_time = gsk_profiler_add_timer (profiler, "cpu-time", "CPU time", FALSE, TRUE);
 }
 
 /**

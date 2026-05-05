@@ -19,7 +19,7 @@
  * Modified by the GTK+ Team and others 1997-2000.  See the AUTHORS
  * file for a list of people on the GTK+ Team.  See the ChangeLog
  * files for a list of changes.  These files are distributed with
- * GTK+ at ftp://ftp.gtk.org/pub/gtk/. 
+ * GTK+ at ftp://ftp.gtk.org/pub/gtk/.
  */
 
 #include "config.h"
@@ -148,6 +148,7 @@ static const GdkDebugKey gdk_debug_keys[] = {
   { "no-vsync",        GDK_DEBUG_NO_VSYNC, "Repaint instantly (uses 100% CPU with animations)" },
   { "color-mgmt",      GDK_DEBUG_COLOR_MANAGEMENT, "Enable color management" },
   { "dcomp",           GDK_DEBUG_DCOMP, "Enable Direct Composition (Windows)" },
+  { "gl-no-fractional",GDK_DEBUG_GL_NO_FRACTIONAL, "Disable fractional scaling for OpenGL" },
 };
 
 static const GdkDebugKey gdk_feature_keys[] = {

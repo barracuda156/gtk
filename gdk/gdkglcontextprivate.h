@@ -35,6 +35,7 @@ typedef enum {
   GDK_GL_FEATURE_EXTERNAL_OBJECTS           = 1 << 3,
   GDK_GL_FEATURE_EXTERNAL_OBJECTS_WIN32     = 1 << 4,
   GDK_GL_FEATURE_BLEND_FUNC_EXTENDED        = 1 << 5,
+  GDK_GL_FEATURE_SYNC                       = 1 << 6,
 } GdkGLFeatures;
 
 #define GDK_GL_N_FEATURES 3
@@ -188,6 +189,8 @@ gboolean                gdk_gl_context_has_feature              (GdkGLContext   
 gboolean                gdk_gl_context_use_es_bgra              (GdkGLContext    *context);
 
 gboolean                gdk_gl_context_has_vertex_arrays        (GdkGLContext    *self) G_GNUC_PURE;
+
+double                  gdk_gl_context_get_scale                (GdkGLContext    *self);
 
 void                    gdk_gl_context_download                 (GdkGLContext    *self,
                                                                  GLuint           tex_id,

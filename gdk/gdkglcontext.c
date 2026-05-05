@@ -109,6 +109,7 @@ const GdkDebugKey gdk_gl_feature_keys[] = {
   { "external-objects", GDK_GL_FEATURE_EXTERNAL_OBJECTS, "GL_EXT_memory_object and GL_EXT_semaphore"},
   { "external-objects-win32", GDK_GL_FEATURE_EXTERNAL_OBJECTS_WIN32, "GL_EXT_memory_object_win32 and GL_EXT_semaphore_win32" },
   { "blend-func-extended", GDK_GL_FEATURE_BLEND_FUNC_EXTENDED, "GL_EXT_blend_func_extended" },
+  { "sync", GDK_GL_FEATURE_SYNC, "GL_ARB_sync" },
 };
 
 typedef struct _GdkGLContextPrivate GdkGLContextPrivate;
@@ -593,6 +594,23 @@ gdk_gl_context_real_make_current (GdkGLContext *context,
 #endif
 }
 
+double
+gdk_gl_context_get_scale (GdkGLContext *self)
+{
+  GdkDisplay *display;
+  GdkSurface *surface;
+  double scale;
+
+  surface = gdk_draw_context_get_surface (GDK_DRAW_CONTEXT (self));
+  scale = gdk_surface_get_scale (surface);
+
+  display = gdk_gl_context_get_display (self);
+  if (gdk_display_get_debug_flags (display) & GDK_DEBUG_GL_NO_FRACTIONAL)
+    scale = ceil (scale);
+
+  return scale;
+}
+
 #ifdef HAVE_EGL
 void
 gdk_gl_context_set_egl_native_window (GdkGLContext *self,
@@ -713,17 +731,19 @@ gdk_gl_context_real_begin_frame (GdkDrawContext  *draw_context,
   GdkSurface *surface = gdk_draw_context_get_surface (draw_context);
   GdkColorState *color_state;
   cairo_region_t *damage;
+  double scale;
   guint ww, wh;
   int i;
 
   color_state = gdk_surface_get_color_state (surface);
+  scale = gdk_gl_context_get_scale (context);
 
   depth = gdk_memory_depth_merge (depth, gdk_color_state_get_depth (color_state));
 
 #ifdef HAVE_EGL
   if (priv->egl_context)
     gdk_gl_context_ensure_egl_surface (context, depth);
-  
+
   *out_depth = priv->egl_surface_depth;
   *out_color_state = color_state;
 #else
@@ -1688,6 +1708,9 @@ gdk_gl_context_init_memory_flags (GdkGLContext *self)
   priv->memory_flags[GDK_MEMORY_G8A8] = GDK_GL_FORMAT_USABLE | GDK_GL_FORMAT_FILTERABLE;
 #endif
 
+  if (!gdk_gl_version_greater_equal (&priv->gl_version, &GDK_GL_VERSION_INIT (3, 0)))
+    return;
+
   /* GLES 3.0.6 spec, table 3.13 */
   priv->memory_flags[GDK_MEMORY_G8] |= GDK_GL_FORMAT_USABLE | GDK_GL_FORMAT_RENDERABLE | GDK_GL_FORMAT_FILTERABLE;
   priv->memory_flags[GDK_MEMORY_A8] |= GDK_GL_FORMAT_USABLE | GDK_GL_FORMAT_RENDERABLE | GDK_GL_FORMAT_FILTERABLE;
@@ -1819,6 +1842,11 @@ gdk_gl_context_check_features (GdkGLContext *context)
       epoxy_has_gl_extension ("GL_ARB_blend_func_extended") ||
       epoxy_has_gl_extension ("GL_EXT_blend_func_extended"))
     features |= GDK_GL_FEATURE_BLEND_FUNC_EXTENDED;
+
+  if (gdk_gl_context_check_version (context, "3.2", "3.0") ||
+      epoxy_has_gl_extension ("GL_ARB_sync") ||
+      epoxy_has_gl_extension ("GL_APPLE_sync"))
+    features |= GDK_GL_FEATURE_SYNC;
 
   return features;
 }
@@ -2070,8 +2098,12 @@ gdk_gl_context_get_glsl_version_string (GdkGLContext *self)
         return "#version 150";
       else if (gdk_gl_version_greater_equal (&priv->gl_version, &GDK_GL_VERSION_INIT (3, 1)))
         return "#version 140";
-      else
+      else if (gdk_gl_version_greater_equal (&priv->gl_version, &GDK_GL_VERSION_INIT (3, 0)))
         return "#version 130";
+      else if (gdk_gl_version_greater_equal (&priv->gl_version, &GDK_GL_VERSION_INIT (2, 1)))
+        return "#version 120";
+      else
+        return "#version 110";
     }
   else if (priv->api == GDK_GL_API_GLES)
     {
@@ -2120,7 +2152,7 @@ gdk_gl_context_clear_current (void)
  *
  * Does a gdk_gl_context_clear_current() if the current context is attached
  * to @surface, leaves the current context alone otherwise.
- * 
+ *
  * Returns: (nullable) (transfer full): The context that was cleared, so that it can be
  *   re-made current later
  **/
@@ -2196,7 +2228,9 @@ gdk_gl_context_has_vertex_arrays (GdkGLContext *self)
   switch (priv->api)
     {
     case GDK_GL_API_GL:
-      return TRUE;
+      return gdk_gl_version_greater_equal (&priv->gl_version, &GDK_GL_VERSION_INIT (3, 0)) ||
+             epoxy_has_gl_extension ("GL_ARB_vertex_array_object") ||
+             epoxy_has_gl_extension ("GL_APPLE_vertex_array_object");
 
     case GDK_GL_API_GLES:
       return gdk_gl_version_get_major (&priv->gl_version) >= 3;

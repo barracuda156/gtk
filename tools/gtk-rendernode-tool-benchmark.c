@@ -76,7 +76,7 @@ benchmark_node (GskRenderNode *node,
       g_print ("%s\t%lld.%03ds\n",
                renderer_name,
                (long long) duration / G_USEC_PER_SEC,
-               (int) ((duration * 1000 / G_USEC_PER_SEC) % 1000)); 
+               (int) ((duration * 1000 / G_USEC_PER_SEC) % 1000));
       g_object_unref (texture);
     }
 
@@ -138,8 +138,8 @@ do_benchmark (int          *argc,
     }
 
   if (renderers == NULL || renderers[0] == NULL)
-    renderers = g_strdupv ((char **) (const char *[]) { "gl", "vulkan", "cairo", NULL });
-  
+    renderers = g_strdupv ((char **) (const char *[]) { "legacy", "gl", "vulkan", "cairo", NULL });
+
   node = load_node_file (filenames[0]);
 
   for (i = 0; renderers[i] != NULL; i++)

@@ -1,5 +1,5 @@
 /* GSK - The GTK Scene Kit
- * Copyright 2016  Endless 
+ * Copyright 2016  Endless
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -69,6 +69,7 @@
 #include <gsk/gskcairorenderer.h>
 #include <gsk/gpu/gskvulkanrenderer.h>
 #include <gsk/gpu/gskglrenderer.h>
+#include <gsk/gl/gskglrenderer.h>
 
 #include <gsk/gsktypes.h>
 #include <gsk/gskenumtypes.h>
